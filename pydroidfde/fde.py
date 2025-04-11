@@ -62,17 +62,17 @@ def parse_header(header_file):
   salt = header[ftrSize + keySize + 32:ftrSize + keySize + 32 + 16]
 
   # Display parsed header
-  print 'Magic          :', "0x%0.8X" % ftrMagic
-  print 'Major Version  :', majorVersion
-  print 'Minor Version  :', minorVersion
-  print 'Footer Size    :', ftrSize, "bytes"
-  print 'Flags          :', "0x%0.8X" % flags
-  print 'Key Size       :', keySize * 8, "bits"
-  print 'Failed Decrypts:', failedDecrypt
-  print 'Crypto Type    :', cryptoType.rstrip("\0")
-  print 'Encrypted Key  :', "0x" + encrypted_key.encode("hex").upper()
-  print 'Salt           :', "0x" + salt.encode("hex").upper()
-  print '----------------'
+  print('Magic          :', "0x%0.8X" % ftrMagic)
+  print('Major Version  :', majorVersion)
+  print('Minor Version  :', minorVersion)
+  print('Footer Size    :', ftrSize, "bytes")
+  print('Flags          :', "0x%0.8X" % flags)
+  print('Key Size       :', keySize * 8, "bits")
+  print('Failed Decrypts:', failedDecrypt)
+  print('Crypto Type    :', cryptoType.rstrip(b"\0"))
+  print('Encrypted Key  :', "0x" + encrypted_key.hex().upper())
+  print('Salt           :', "0x" + salt.hex().upper())
+  print('----------------')
 
   return encrypted_key, salt
 
@@ -87,7 +87,7 @@ def get_decrypted_key(encrypted_key, salt, password, debug=True):
   elif keySize == 32:
     algorithm='aes_256_cbc'
   else:
-    print 'Error: unsupported keySize'
+    print('Error: unsupported keySize')
     return
 
   # Calculate the key decryption key and IV from the password
@@ -96,17 +96,17 @@ def get_decrypted_key(encrypted_key, salt, password, debug=True):
   # For scrypt case, use py-script from https://bitbucket.org/mhallin/py-scrypt/src
   deriv_result = None
   dkLen = keySize+IV_LEN_BYTES
-  if header[0xbc] == '\x02': # if the header specify a dkType == 2, the partition uses scrypt
+  if header[0xbc] == 2: # if the header specify a dkType == 2, the partition uses scrypt
     import scrypt
-    print '[+] This partition uses scrypt'
-    factors = (ord(fact) for fact in header[0xbd:0xc0])
-    N = factors.next()
-    r = factors.next()
-    p = factors.next()
-    print "[+] scrypt parameters are: N=%s, r=%s, p=%s" % (hex(N), hex(r), hex(p))
+    print('[+] This partition uses scrypt')
+    N = header[0xbd]
+    r = header[0xbe]
+    p = header[0xbf]
+    print(N, r, p)
+    print("[+] scrypt parameters are: N=%s, r=%s, p=%s" % (hex(N), hex(r), hex(p)))
     deriv_result = scrypt.hash(password, salt, 1 << N, 1 << r, 1 << p)[:dkLen]
   else:
-    print '[+] This partition uses pbkdf2'
+    print('[+] This partition uses pbkdf2')
     deriv_result = EVP.pbkdf2(password, salt, iter=HASH_COUNT, keylen=dkLen)
   key = deriv_result[:keySize]
   iv = deriv_result[keySize:]
@@ -118,11 +118,11 @@ def get_decrypted_key(encrypted_key, salt, password, debug=True):
   
   # Display the decrypted key
   if debug:
-    print 'Password       :', password
-    print 'Derived Key    :', "0x" + key.encode("hex").upper()
-    print 'Derived IV     :', "0x" + iv.encode("hex").upper()
-    print 'Decrypted Key  :', "0x" + decrypted_key.encode("hex").upper()
-    print '----------------'
+    print('Password       :', password)
+    print('Derived Key    :', "0x" + key.hex().upper())
+    print('Derived IV     :', "0x" + iv.hex().upper())
+    print('Decrypted Key  :', "0x" + decrypted_key.hex().upper())
+    print('----------------')
 
   return decrypted_key
 
@@ -135,7 +135,7 @@ def decrypt_data(decrypted_key, essiv, data):
   elif keySize == 32:
     algorithm='aes_256_cbc'
   else:
-    print 'Error: unsupported keySize'
+    print('Error: unsupported keySize')
     return
 
   # try to decrypt the actual data 
